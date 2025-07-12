@@ -3,7 +3,8 @@
     "backend": {
       "candid": "./can.did",
       "package": "backend",
-      "type": "rust"
+      "type": "rust",
+      "main": "src/backend/lib.rs"
     }  
   },
   "dfx": "0.24.3",
