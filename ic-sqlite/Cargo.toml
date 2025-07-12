@@ -1,0 +1,14 @@
+[package]
+name = "ic-sqlite"
+description = "ICSQLite is a cloud SQLite database on Internet Computer and provides SDK for developers to use."
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+authors = ["Froghub <f@froghub.io>"]
+repository = "https://github.com/froghub-io/ic-sqlite.git"
+
+[dependencies]
+ic-cdk = "0.6.8"
+lazy_static = "1.2"
+sqlite-vfs = { package = "sqlite-vfs-ic", version = "0.2" }
+rusqlite = { package = "rusqlite-ic", version = "0.28", features = ["bundled", "serde_json"]}

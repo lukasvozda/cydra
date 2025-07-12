@@ -1,0 +1,32 @@
+# Rust
+/target/
+Cargo.lock
+
+# IC/Dfinity
+/.dfx/
+backend.wasm
+*.wasm
+
+# Build artifacts
+*.tar.gz
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# Local environment
+.env
+.env.local
