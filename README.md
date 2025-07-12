@@ -1,2 +1,2 @@
-# cydra
-ICP SQLite Database management 
+# Cydra
+ICP SQLite Database management platform
