@@ -30,3 +30,12 @@ Thumbs.db
 # Local environment
 .env
 .env.local
+
+node_modules/
+src/frontend/node_modules/
+package-lock.json
+
+.svelte-kit/
+
+# Claude
+.claude/

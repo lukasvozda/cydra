@@ -5,8 +5,18 @@
       "package": "backend",
       "type": "rust",
       "main": "src/backend/lib.rs"
-    }  
-  },
+    },
+    "frontend": {
+      "dependencies": [
+        "backend"
+      ],
+      "source": [
+        "src/frontend/dist"
+      ],
+      "type": "assets",
+      "workspace": "src/frontend"
+    }
+  },  
   "dfx": "0.24.3",
   "networks": {
     "local": {
