@@ -1,5 +1,6 @@
 # Cydra
-ICP SQLite Database management platform
+Cydra is an ICP (Internet Computer Protocol) SQLite database management platform built with Rust. It demonstrates the use of ICSQLite - a cloud SQLite database implementation for the Internet Computer that provides SDK for developers to persist data in IC canisters. The ultimate goal of this application is to allow the user to create it's own databases, manage tables, upload data and query data.
+
 
 ## Summary
 Common Test Example of using ICSQLite in IC Canister
