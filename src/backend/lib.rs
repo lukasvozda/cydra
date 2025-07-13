@@ -82,6 +82,32 @@ impl From<(RejectionCode, String)> for Error {
     }
 }
 
+#[derive(CandidType, Deserialize)]
+struct TableInfo {
+    table_name: String,
+    row_count: u64,
+    column_count: u32,
+    schema: Vec<ColumnInfo>,
+}
+
+#[derive(CandidType, Deserialize)]
+struct ColumnInfo {
+    name: String,
+    data_type: String,
+    not_null: bool,
+    primary_key: bool,
+}
+
+#[derive(CandidType, Deserialize)]
+struct DatabaseInfo {
+    total_tables: u32,
+    database_size_mb: f64,
+    tables: Vec<TableInfo>,
+}
+
+type DatabaseInfoResult<T = DatabaseInfo, E = Error> = std::result::Result<T, E>;
+
+// Add this function to your code
 #[query]
 fn get_database_info() -> DatabaseInfoResult {
     let conn = ic_sqlite::CONN.lock().unwrap();
