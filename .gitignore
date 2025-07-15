@@ -33,6 +33,7 @@ Thumbs.db
 
 node_modules/
 src/frontend/node_modules/
+/src/frontend/dist/
 package-lock.json
 
 .svelte-kit/

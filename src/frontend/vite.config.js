@@ -3,6 +3,7 @@ import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 import environment from 'vite-plugin-environment';
 import dotenv from 'dotenv';
+import tailwindcss from '@tailwindcss/vite'
 
 dotenv.config({ path: '../../.env' });
 
@@ -17,15 +18,19 @@ export default defineConfig({
       },
     },
   },
+  ssr: {
+    noExternal: ['@skeletonlabs/skeleton-svelte']
+  },
   server: {
     proxy: {
       "/api": {
-        target: "http://127.0.0.1:4943",
+        target: "http://127.0.0.1:8000",
         changeOrigin: true,
       },
     },
   },
   plugins: [
+    tailwindcss(),
     sveltekit(),
     environment("all", { prefix: "CANISTER_" }),
     environment("all", { prefix: "DFX_" }),
