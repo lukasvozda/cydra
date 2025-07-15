@@ -15,13 +15,5 @@
   "type": "module",
   "workspaces": [
     "src/frontend"
-  ],
-  "dependencies": {
-    "@tailwindcss/vite": "^4.1.11",
-    "tailwindcss": "^4.1.11"
-  },
-  "devDependencies": {
-    "@skeletonlabs/skeleton": "^3.1.7",
-    "@skeletonlabs/skeleton-svelte": "^1.3.0"
-  }
+  ]
 }
