@@ -1,8 +1,15 @@
 <script>
+  import { onMount } from "svelte";
   import { backend } from "$lib/canisters";
   import { Avatar } from '@skeletonlabs/skeleton-svelte';
   import { Progress } from '@skeletonlabs/skeleton-svelte';
+  import { initAuth, login, logout, isAuthenticated, principal } from "$lib/auth";
+  
   let database_info = null;
+
+  onMount(async () => {
+    await initAuth();
+  });
 
   function onSubmit(event) {
     //const name = event.target.name.value;
@@ -12,6 +19,14 @@
     });
     return false;
   }
+
+  async function handleLogin() {
+    await login();
+  }
+
+  async function handleLogout() {
+    await logout();
+  }
 </script>
 
 <main>
@@ -20,10 +35,27 @@
   <h1 class="text-5xl font-bold underline text-center">
     Hello world!
   </h1>
+  
+  <div class="auth-section mb-6">
+    {#if $isAuthenticated}
+      <div class="text-center mb-4">
+        <p class="text-lg">Welcome!</p>
+        <p class="text-sm text-surface-600">Principal: {$principal}</p>
+      </div>
+      <div class="text-center">
+        <button on:click={handleLogout} class="btn preset-filled-error-500">Log out</button>
+      </div>
+    {:else}
+      <div class="text-center">
+        <button on:click={handleLogin} class="btn preset-filled-primary-500">Log in</button>
+      </div>
+    {/if}
+  </div>
+  
   <!-- <Avatar src="https://i.pravatar.cc/150?img=48" name="skeleton" />
   <Progress value={50} max={100}>50%</Progress> -->
   <form action="#" on:submit|preventDefault={onSubmit}>
-    <button type="submit" class="btn preset-filled-primary-500">Load database info</button>
+    <button type="submit" class="btn preset-filled-secondary-500">Load database info</button>
   </form>
   <section>
     {#if database_info}
