@@ -11,13 +11,7 @@ const buildingOrTesting = building || process.env.NODE_ENV === "test";
 // Create agent with Safari-compatible settings
 function createSafariCompatibleActor() {
     const agent = new HttpAgent({
-        host: process.env.DFX_NETWORK === "ic" ? "https://ic0.app" : "http://127.0.0.1:8000",
-        // Only add credentials for production IC network
-        ...(process.env.DFX_NETWORK === "ic" && {
-            fetchOptions: {
-                credentials: 'include'
-            }
-        })
+        host: process.env.DFX_NETWORK === "ic" ? "https://ic0.app" : "http://127.0.0.1:8000"
     });
 
     // Fetch root key for certificate validation during development
