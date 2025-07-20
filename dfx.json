@@ -17,6 +17,10 @@
       "declarations": {
         "output": "src/frontend/declarations"
       }
+    },
+    "internet_identity": {
+      "type": "pull",
+      "id": "rdmx6-jaaaa-aaaaa-aaadq-cai"
     }
   },  
   "dfx": "0.24.3",

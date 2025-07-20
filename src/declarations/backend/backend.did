@@ -28,6 +28,7 @@ type TableInfo = record {
     row_count: nat64;
     column_count: nat32;
     schema: vec ColumnInfo;
+    preview_data: vec vec text;
 };
 
 type DatabaseInfo = record {

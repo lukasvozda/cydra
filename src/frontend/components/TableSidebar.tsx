@@ -3,8 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Database, Table as TableIcon, Search, MoreHorizontal, LogOut, RefreshCw } from "lucide-react";
+import { Plus, Database, Table as TableIcon, Search, MoreHorizontal, RefreshCw } from "lucide-react";
 import { useDatabaseInfo } from "@/hooks/useCanister";
+import { UserSection } from "./UserSection";
 interface Table {
   id: string;
   name: string;
@@ -157,17 +158,14 @@ export function TableSidebar({
         </div>
       </div>
 
-      {/* Footer */}
+      {/* Database Info */}
       <div className="p-4 border-t border-border">
-        <div className="space-y-2">
-          <div className="text-xs text-muted-foreground">
-            {isLoading ? "Loading..." : dbInfo ? `${dbInfo.database_size_mb.toFixed(2)} MB` : ""}
-          </div>
-          <Button variant="ghost" size="sm" className="w-full justify-start text-destructive hover:text-destructive">
-            <LogOut className="h-4 w-4 mr-2" />
-            Disconnect
-          </Button>
+        <div className="text-xs text-muted-foreground">
+          {isLoading ? "Loading..." : dbInfo ? `${dbInfo.database_size_mb.toFixed(2)} MB` : ""}
         </div>
       </div>
+
+      {/* User Section */}
+      <UserSection />
     </div>;
 }

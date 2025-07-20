@@ -88,6 +88,7 @@ struct TableInfo {
     row_count: u64,
     column_count: u32,
     schema: Vec<ColumnInfo>,
+    preview_data: Vec<Vec<String>>,
 }
 
 #[derive(CandidType, Deserialize)]
@@ -158,11 +159,51 @@ fn get_database_info() -> DatabaseInfoResult {
         
         let column_count = schema.len() as u32;
         
+        // Get preview data (first 10 rows) for this table
+        let preview_query = format!("SELECT * FROM {} LIMIT 10", table_name);
+        let mut preview_stmt = conn.prepare(&preview_query)
+            .map_err(|e| Error::CanisterError { message: format!("Failed to prepare preview query for {}: {:?}", table_name, e) })?;
+        
+        let preview_column_count = preview_stmt.column_count();
+        let mut preview_rows = preview_stmt.query([])
+            .map_err(|e| Error::CanisterError { message: format!("Failed to execute preview query for {}: {:?}", table_name, e) })?;
+        
+        let mut preview_data: Vec<Vec<String>> = Vec::new();
+        loop {
+            match preview_rows.next() {
+                Ok(row) => {
+                    match row {
+                        Some(row) => {
+                            let mut vec: Vec<String> = Vec::new();
+                            for idx in 0..preview_column_count {
+                                let v = row.get_ref_unwrap(idx);
+                                match v.data_type() {
+                                    Type::Null => { vec.push(String::from("")) }
+                                    Type::Integer => { vec.push(v.as_i64().unwrap().to_string()) }
+                                    Type::Real => { vec.push(v.as_f64().unwrap().to_string()) }
+                                    Type::Text => { vec.push(v.as_str().unwrap().parse().unwrap()) }
+                                    Type::Blob => { vec.push(hex::encode(v.as_blob().unwrap())) }
+                                }
+                            }
+                            preview_data.push(vec);
+                        },
+                        None => break
+                    }
+                },
+                Err(e) => {
+                    // If preview query fails, just use empty data instead of failing the whole request
+                    eprintln!("Preview query failed for {}: {:?}", table_name, e);
+                    break;
+                }
+            }
+        }
+        
         tables.push(TableInfo {
             table_name: table_name.clone(),
             row_count,
             column_count,
             schema,
+            preview_data,
         });
     }
     
