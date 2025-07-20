@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useTableData } from "@/hooks/useCanister";
+import { useState, useMemo } from "react";
+import { useDatabaseInfo } from "@/hooks/useCanister";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,13 +21,6 @@ import {
   AlertCircle
 } from "lucide-react";
 
-interface Column {
-  name: string;
-  type: string;
-  nullable: boolean;
-  defaultValue?: string;
-  isPrimaryKey?: boolean;
-}
 
 interface DatabasePanelProps {
   activeTable?: {
@@ -48,19 +41,22 @@ interface DatabasePanelProps {
 export function DatabasePanel({ activeTable, queryResult }: DatabasePanelProps) {
   const [selectedTab, setSelectedTab] = useState("overview");
   
-  // Get real table data from backend
-  const { data: tableData, isLoading: isLoadingData, error: dataError } = useTableData(activeTable?.name);
+  // Get database info to access real schema and preview data
+  const { data: dbInfo, isLoading: isLoadingData, error: dataError } = useDatabaseInfo();
 
-  // Sample columns for now - in a real app, this would come from schema info
-  const columns: Column[] = [
-    { name: "id", type: "INTEGER", nullable: false, isPrimaryKey: true },
-    { name: "name", type: "TEXT", nullable: false },
-    { name: "age", type: "INTEGER", nullable: true },
-    { name: "gender", type: "INTEGER", nullable: true },
-  ];
+  // Get real columns and preview data from database info for the active table
+  const { columns, previewData } = useMemo(() => {
+    if (!activeTable || !dbInfo) return { columns: [], previewData: [] };
+    
+    const tableInfo = dbInfo.tables.find(table => table.table_name === activeTable.name);
+    return {
+      columns: tableInfo?.schema || [],
+      previewData: tableInfo?.preview_data || []
+    };
+  }, [activeTable, dbInfo]);
 
-  // Use real data from backend or empty array
-  const displayData = tableData || [];
+  // Use preview data for display
+  const displayData = previewData;
 
   // Show query results if available
   if (queryResult) {
@@ -307,7 +303,7 @@ export function DatabasePanel({ activeTable, queryResult }: DatabasePanelProps) 
           <TabsContent value="data" className="p-6">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="font-medium text-foreground">Table Data</h3>
+                <h3 className="font-medium text-foreground">Preview ({displayData.length} rows)</h3>
                 <div className="flex gap-2">
                   <Input placeholder="Search..." className="w-64 bg-background/50" />
                   <Button variant="outline" size="sm">
@@ -323,16 +319,16 @@ export function DatabasePanel({ activeTable, queryResult }: DatabasePanelProps) 
                     <thead className="bg-background/30 border-b border-border">
                       <tr>
                         {columns.map((column) => (
-                          <th key={column.name} className="px-4 py-3 text-left text-sm font-medium text-foreground">
+                          <th key={column.name} className="px-4 py-2 text-left text-sm font-medium text-foreground">
                             <div className="flex items-center gap-2">
                               {column.name}
-                              {column.isPrimaryKey && (
+                              {column.primary_key && (
                                 <Badge variant="secondary" className="text-xs">PK</Badge>
                               )}
                             </div>
                           </th>
                         ))}
-                        <th className="px-4 py-3 text-right text-sm font-medium text-foreground">Actions</th>
+                        <th className="px-4 py-2 text-right text-sm font-medium text-foreground">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -358,11 +354,11 @@ export function DatabasePanel({ activeTable, queryResult }: DatabasePanelProps) 
                         displayData.map((row, rowIndex) => (
                           <tr key={rowIndex} className="border-b border-border hover:bg-background/20 transition-colors">
                             {row.map((cellValue, colIndex) => (
-                              <td key={colIndex} className="px-4 py-3 text-sm text-foreground">
+                              <td key={colIndex} className="px-4 py-2 text-sm text-foreground">
                                 {cellValue !== null ? String(cellValue) : 'NULL'}
                               </td>
                             ))}
-                            <td className="px-4 py-3 text-right">
+                            <td className="px-4 py-2 text-right">
                               <div className="flex items-center justify-end gap-1">
                                 <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                                   <Eye className="h-4 w-4" />
@@ -405,17 +401,14 @@ export function DatabasePanel({ activeTable, queryResult }: DatabasePanelProps) 
                       <div className="flex items-center gap-4">
                         <div className="flex items-center gap-2">
                           <span className="font-medium text-foreground">{column.name}</span>
-                          {column.isPrimaryKey && (
+                          {column.primary_key && (
                             <Badge variant="secondary" className="text-xs">Primary Key</Badge>
                           )}
                         </div>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Badge variant="outline" className="text-xs">{column.type}</Badge>
-                          {!column.nullable && (
+                          <Badge variant="outline" className="text-xs">{column.data_type}</Badge>
+                          {column.not_null && (
                             <Badge variant="outline" className="text-xs">NOT NULL</Badge>
-                          )}
-                          {column.defaultValue && (
-                            <span className="text-xs">Default: {column.defaultValue}</span>
                           )}
                         </div>
                       </div>

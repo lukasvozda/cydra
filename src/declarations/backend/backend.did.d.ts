@@ -25,6 +25,7 @@ export interface TableInfo {
   'schema' : Array<ColumnInfo>,
   'column_count' : number,
   'row_count' : bigint,
+  'preview_data' : Array<Array<string>>,
   'table_name' : string,
 }
 export interface _SERVICE {

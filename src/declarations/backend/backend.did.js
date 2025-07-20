@@ -14,6 +14,7 @@ export const idlFactory = ({ IDL }) => {
     'schema' : IDL.Vec(ColumnInfo),
     'column_count' : IDL.Nat32,
     'row_count' : IDL.Nat64,
+    'preview_data' : IDL.Vec(IDL.Vec(IDL.Text)),
     'table_name' : IDL.Text,
   });
   const DatabaseInfo = IDL.Record({

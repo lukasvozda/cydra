@@ -3,7 +3,7 @@ import { createActor, canisterId } from "../../declarations/backend";
 
 // Create the agent pointing to the correct host based on network
 const agent = new HttpAgent({
-  host: process.env.DFX_NETWORK === "ic" ? "https://ic0.app" : "http://127.0.0.1:57388",
+  host: process.env.DFX_NETWORK === "ic" ? "https://ic0.app" : "http://127.0.0.1:8000",
 });
 
 // Fetch root key for local development
@@ -30,6 +30,7 @@ export interface TableInfo {
   row_count: bigint;
   column_count: number;
   schema: ColumnInfo[];
+  preview_data: string[][];
 }
 
 export interface DatabaseInfo {
