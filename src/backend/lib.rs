@@ -34,25 +34,34 @@ fn query(sql: String) -> QueryResult {
     let conn = ic_sqlite::CONN.lock().unwrap();
     let mut stmt = conn.prepare(&sql).unwrap();
     let cnt = stmt.column_count();
+    
+    // Get column names once
+    let mut columns = Vec::new();
+    for idx in 0..cnt {
+        columns.push(stmt.column_name(idx).unwrap().to_string());
+    }
+    
     let mut rows = stmt.query([]).unwrap();
-    let mut res: Vec<Vec<String>> = Vec::new();
+    let mut data_rows: Vec<Vec<String>> = Vec::new();
+    
     loop {
         match rows.next() {
             Ok(row) => {
                 match row {
                     Some(row) => {
-                        let mut vec: Vec<String> = Vec::new();
+                        let mut row_values = Vec::new();
                         for idx in 0..cnt {
                             let v = row.get_ref_unwrap(idx);
-                            match v.data_type() {
-                                Type::Null => {  vec.push(String::from("")) }
-                                Type::Integer => { vec.push(v.as_i64().unwrap().to_string()) }
-                                Type::Real => { vec.push(v.as_f64().unwrap().to_string()) }
-                                Type::Text => { vec.push(v.as_str().unwrap().parse().unwrap()) }
-                                Type::Blob => { vec.push(hex::encode(v.as_blob().unwrap())) }
-                            }
+                            let value = match v.data_type() {
+                                Type::Null => String::from(""),
+                                Type::Integer => v.as_i64().unwrap().to_string(),
+                                Type::Real => v.as_f64().unwrap().to_string(),
+                                Type::Text => v.as_str().unwrap().to_string(),
+                                Type::Blob => hex::encode(v.as_blob().unwrap())
+                            };
+                            row_values.push(value);
                         }
-                        res.push(vec)
+                        data_rows.push(row_values);
                     },
                     None => break
                 }
@@ -60,7 +69,11 @@ fn query(sql: String) -> QueryResult {
             Err(err) => return Err(Error::CanisterError {message: format!("{:?}", err) })
         }
     }
-    Ok(res)
+    
+    Ok(QueryResultWithColumns {
+        columns,
+        data: data_rows,
+    })
 }
 
 #[derive(CandidType, Deserialize)]
@@ -71,7 +84,7 @@ enum Error {
 
 type Result<T = String, E = Error> = std::result::Result<T, E>;
 
-type QueryResult<T = Vec<Vec<String>>, E = Error> = std::result::Result<T, E>;
+type QueryResult<T = QueryResultWithColumns, E = Error> = std::result::Result<T, E>;
 
 impl From<(RejectionCode, String)> for Error {
     fn from((code, message): (RejectionCode, String)) -> Self {
@@ -80,6 +93,12 @@ impl From<(RejectionCode, String)> for Error {
             _ => Self::InvalidCanister,
         }
     }
+}
+
+#[derive(CandidType, Deserialize)]
+struct QueryResultWithColumns {
+    columns: Vec<String>,
+    data: Vec<Vec<String>>,
 }
 
 #[derive(CandidType, Deserialize)]

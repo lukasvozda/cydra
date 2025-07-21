@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Database, Table as TableIcon, Search, MoreHorizontal, RefreshCw } from "lucide-react";
-import { useDatabaseInfo } from "@/hooks/useCanister";
+import { useDatabaseInfo, useCanisterStats } from "@/hooks/useCanister";
 import { UserSection } from "./UserSection";
 interface Table {
   id: string;
@@ -26,6 +26,7 @@ export function TableSidebar({
   const [newTableName, setNewTableName] = useState("");
   
   const { data: dbInfo, isLoading, error, refetch } = useDatabaseInfo();
+  const { data: canisterStats, isLoading: statsLoading } = useCanisterStats();
 
   // Convert backend table info to our Table format
   const tables = useMemo(() => {
@@ -159,9 +160,27 @@ export function TableSidebar({
       </div>
 
       {/* Database Info */}
-      <div className="p-4 border-t border-border">
-        <div className="text-xs text-muted-foreground">
-          {isLoading ? "Loading..." : dbInfo ? `${dbInfo.database_size_mb.toFixed(2)} MB` : ""}
+      <div className="p-4 border-t border-border space-y-3">
+        <div className="flex items-center gap-2">
+          <Database className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm font-medium text-foreground">Database Info</span>
+        </div>
+        
+        <div className="space-y-2">
+          <div className="flex justify-between items-center">
+            <span className="text-xs text-muted-foreground">Size:</span>
+            <span className="text-xs text-foreground">
+              {isLoading ? "Loading..." : dbInfo ? `${dbInfo.database_size_mb.toFixed(2)} MB` : "0 MB"}
+            </span>
+          </div>
+          
+          <div className="flex justify-between items-center">
+            <span className="text-xs text-muted-foreground">Cycles:</span>
+            <span className="text-xs text-foreground">
+              {statsLoading ? "Loading..." : canisterStats ? 
+                `${(Number(canisterStats.balance) / 1_000_000_000_000).toFixed(2)}T` : "0T"}
+            </span>
+          </div>
         </div>
       </div>
 

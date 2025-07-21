@@ -15,7 +15,7 @@
       ],
       "type": "assets",
       "declarations": {
-        "output": "src/frontend/declarations"
+        "output": "src/declarations/frontend"
       }
     },
     "internet_identity": {

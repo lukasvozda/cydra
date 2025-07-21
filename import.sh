@@ -1,7 +1,25 @@
 #!/bin/bash
 
+# Import sample data script for Cydra database
+# 
+# Usage:
+#   Local deployment:  ./import.sh
+#   Mainnet deployment: NETWORK=ic ./import.sh
+#
+# Network configuration
+NETWORK=${NETWORK:-local}
+
+# Set dfx command based on network
+if [ "$NETWORK" = "ic" ]; then
+    DFX_CMD="dfx canister call backend --network ic"
+    echo "--- Deploying to Internet Computer mainnet"
+else
+    DFX_CMD="dfx canister call backend"
+    echo "--- Deploying to local network"
+fi
+
 echo "--- Creating additional sample tables if not exists"
-dfx canister call backend execute 'CREATE TABLE IF NOT EXISTS products (
+$DFX_CMD execute 'CREATE TABLE IF NOT EXISTS products (
     id INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
     price REAL,
@@ -9,7 +27,7 @@ dfx canister call backend execute 'CREATE TABLE IF NOT EXISTS products (
     stock INTEGER
 )'
 
-dfx canister call backend execute 'CREATE TABLE IF NOT EXISTS orders (
+$DFX_CMD execute 'CREATE TABLE IF NOT EXISTS orders (
     id INTEGER PRIMARY KEY,
     customer_name TEXT NOT NULL,
     product_id INTEGER,
@@ -57,7 +75,7 @@ for ((i=1; i<=TOTAL_PRODUCTS; i++)); do
   # Execute batch when we reach BATCH_SIZE
   if (( i % BATCH_SIZE == 0 )); then
     FINAL_SQL="${INSERT_SQL} ${BATCH%,};"  # Remove trailing comma and finalize SQL
-    dfx canister call backend execute "$FINAL_SQL"
+    $DFX_CMD execute "$FINAL_SQL"
     BATCH=""  # Reset batch
     echo "Inserted $i products..."
   fi
@@ -66,7 +84,7 @@ done
 # Insert remaining products if any
 if [[ ! -z "$BATCH" ]]; then
   FINAL_SQL="${INSERT_SQL} ${BATCH%,};"
-  dfx canister call backend execute "$FINAL_SQL"
+  $DFX_CMD execute "$FINAL_SQL"
   echo "Inserted $TOTAL_PRODUCTS products."
 fi
 
@@ -87,7 +105,7 @@ for ((i=1; i<=TOTAL_ORDERS; i++)); do
   # Execute batch when we reach BATCH_SIZE
   if (( i % BATCH_SIZE == 0 )); then
     FINAL_SQL="${INSERT_SQL} ${BATCH%,};"  # Remove trailing comma and finalize SQL
-    dfx canister call backend execute "$FINAL_SQL"
+    $DFX_CMD execute "$FINAL_SQL"
     BATCH=""  # Reset batch
     echo "Inserted $i orders..."
   fi
@@ -96,7 +114,7 @@ done
 # Insert remaining orders if any
 if [[ ! -z "$BATCH" ]]; then
   FINAL_SQL="${INSERT_SQL} ${BATCH%,};"
-  dfx canister call backend execute "$FINAL_SQL"
+  $DFX_CMD execute "$FINAL_SQL"
   echo "Inserted $TOTAL_ORDERS orders."
 fi
 

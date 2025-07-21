@@ -44,9 +44,26 @@ export function SqlEditor({ activeTable, onQueryResult }: SqlEditorProps) {
   } | null>(null);
 
   const [queryHistory] = useState([
-    "SELECT * FROM person",
-    "CREATE TABLE example (id INTEGER PRIMARY KEY, name TEXT)",
-    "INSERT INTO person (name, age) VALUES ('John', 30)"
+    `SELECT 
+  o.*, 
+  p.price, 
+  o.quantity * p.price as revenue 
+FROM orders as o
+LEFT JOIN products as p
+ON o.product_id = p.id`,
+    `CREATE TABLE person (
+  id      INTEGER,
+  name    TEXT,
+  email   TEXT,
+  age     INTEGER,
+  address TEXT
+);`,
+`INSERT INTO person (id, name, email, age, address) VALUES
+  (1, 'John Doe',       'john.doe@email.com',       28, '123 Main St, New York, NY'),
+  (2, 'Jane Smith',     'jane.smith@email.com',     34, '456 Oak Ave, Los Angeles, CA'),
+  (3, 'Bob Johnson',    'bob.johnson@email.com',    45, '789 Pine Rd, Chicago, IL'),
+  (4, 'Alice Brown',    'alice.brown@email.com',    29, '321 Elm St, Houston, TX'),
+  (5, 'Charlie Wilson', 'charlie.wilson@email.com', 52, '654 Maple Dr, Phoenix, AZ');`
   ]);
 
   const [isExecuting, setIsExecuting] = useState(false);
@@ -224,6 +241,8 @@ export function SqlEditor({ activeTable, onQueryResult }: SqlEditorProps) {
     },
     '.cm-scroller': {
       backgroundColor: 'hsl(220 13% 18%)',
+      overflowY: 'auto',
+      maxHeight: '220px',
     },
     '.cm-gutters': {
       backgroundColor: 'hsl(var(--muted))',
@@ -245,7 +264,7 @@ export function SqlEditor({ activeTable, onQueryResult }: SqlEditorProps) {
   }, { dark: true });
 
   return (
-    <Card className="h-80 bg-gradient-card border-border overflow-hidden flex flex-col">
+    <Card className="bg-gradient-card border-border overflow-hidden flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-border bg-background/20">
         <div className="flex items-center gap-3">
@@ -313,11 +332,11 @@ export function SqlEditor({ activeTable, onQueryResult }: SqlEditorProps) {
       </div>
 
       {/* SQL Editor */}
-      <div className="flex-1 relative">
+      <div className="relative" style={{ height: '220px' }}>
         <CodeMirror
           value={query}
           onChange={onChange}
-          height="100%"
+          height="220px"
           theme={customDarkTheme}
           extensions={[
             sql(),
@@ -378,7 +397,7 @@ export function SqlEditor({ activeTable, onQueryResult }: SqlEditorProps) {
       </div>
 
       {/* Quick Actions */}
-      <div className="p-3 border-t border-border bg-background/10">
+      <div className="p-3 border-t border-border bg-background/10 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex gap-1">
             {queryHistory.slice(0, 3).map((historyQuery, index) => (

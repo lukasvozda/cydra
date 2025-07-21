@@ -30,7 +30,7 @@ interface DatabasePanelProps {
     lastModified: string;
   };
   queryResult?: {
-    data: any;
+    data: { columns: string[]; data: string[][] } | null;
     query: string;
     duration: number;
     timestamp: Date;
@@ -104,10 +104,10 @@ export function DatabasePanel({ activeTable, queryResult }: DatabasePanelProps) 
                 <p className="text-muted-foreground">There was an error executing your query</p>
               </div>
             </div>
-          ) : queryResult.data && Array.isArray(queryResult.data) && queryResult.data.length > 0 ? (
+          ) : queryResult.data && queryResult.data.data && Array.isArray(queryResult.data.data) && queryResult.data.data.length > 0 ? (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="font-medium text-foreground">Results ({queryResult.data.length} rows)</h3>
+                <h3 className="font-medium text-foreground">Results ({queryResult.data.data.length} rows)</h3>
                 <code className="text-xs bg-muted px-2 py-1 rounded">{queryResult.query}</code>
               </div>
               
@@ -116,19 +116,19 @@ export function DatabasePanel({ activeTable, queryResult }: DatabasePanelProps) 
                   <table className="w-full">
                     <thead className="bg-background/30 border-b border-border">
                       <tr>
-                        {queryResult.data[0] && queryResult.data[0].map((_: any, colIndex: number) => (
-                          <th key={colIndex} className="px-4 py-3 text-left text-sm font-medium text-foreground">
-                            Column {colIndex + 1}
+                        {queryResult.data.columns.map((columnName: string, colIndex: number) => (
+                          <th key={colIndex} className="px-4 py-2 text-left text-sm font-medium text-foreground">
+                            {columnName}
                           </th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {queryResult.data.map((row: any[], rowIndex: number) => (
+                      {queryResult.data.data.map((row: string[], rowIndex: number) => (
                         <tr key={rowIndex} className="border-b border-border hover:bg-background/20 transition-colors">
-                          {row.map((cellValue: any, colIndex: number) => (
-                            <td key={colIndex} className="px-4 py-3 text-sm text-foreground">
-                              {cellValue !== null && cellValue !== undefined ? String(cellValue) : 'NULL'}
+                          {row.map((cellValue: string, colIndex: number) => (
+                            <td key={colIndex} className="px-4 py-2 text-sm text-foreground">
+                              {cellValue !== null && cellValue !== undefined && cellValue !== "" ? String(cellValue) : 'NULL'}
                             </td>
                           ))}
                         </tr>
@@ -351,9 +351,9 @@ export function DatabasePanel({ activeTable, queryResult }: DatabasePanelProps) 
                           </td>
                         </tr>
                       ) : (
-                        displayData.map((row, rowIndex) => (
+                        displayData.map((row: string[], rowIndex: number) => (
                           <tr key={rowIndex} className="border-b border-border hover:bg-background/20 transition-colors">
-                            {row.map((cellValue, colIndex) => (
+                            {row.map((cellValue: string, colIndex: number) => (
                               <td key={colIndex} className="px-4 py-2 text-sm text-foreground">
                                 {cellValue !== null ? String(cellValue) : 'NULL'}
                               </td>

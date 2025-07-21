@@ -17,8 +17,12 @@ export type DatabaseInfoResult = { 'Ok' : DatabaseInfo } |
   { 'Err' : Error };
 export type Error = { 'CanisterError' : { 'message' : string } } |
   { 'InvalidCanister' : null };
-export type QueryResult = { 'Ok' : Array<Array<string>> } |
+export type QueryResult = { 'Ok' : QueryResultWithColumns } |
   { 'Err' : Error };
+export interface QueryResultWithColumns {
+  'data' : Array<Array<string>>,
+  'columns' : Array<string>,
+}
 export type Result = { 'Ok' : string } |
   { 'Err' : Error };
 export interface TableInfo {
