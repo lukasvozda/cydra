@@ -39,7 +39,12 @@ export interface DatabaseInfo {
   tables: TableInfo[];
 }
 
-export type QueryResult = { Ok: string[][] } | { Err: any };
+export interface QueryResultWithColumns {
+  columns: string[];
+  data: string[][];
+}
+
+export type QueryResult = { Ok: QueryResultWithColumns } | { Err: any };
 export type ExecuteResult = { Ok: string } | { Err: any };
 export type DatabaseInfoResult = { Ok: DatabaseInfo } | { Err: any };
 

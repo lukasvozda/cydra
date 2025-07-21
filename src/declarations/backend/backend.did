@@ -10,8 +10,13 @@ type Result = variant {
     Err : Error;
 };
 
+type QueryResultWithColumns = record {
+    columns: vec text;
+    data: vec vec text;
+};
+
 type QueryResult = variant {
-    Ok: vec vec text;
+    Ok: QueryResultWithColumns;
     Err : Error;
 };
 

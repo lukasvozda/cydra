@@ -26,8 +26,12 @@ export const idlFactory = ({ IDL }) => {
     'Ok' : DatabaseInfo,
     'Err' : Error,
   });
+  const QueryResultWithColumns = IDL.Record({
+    'data' : IDL.Vec(IDL.Vec(IDL.Text)),
+    'columns' : IDL.Vec(IDL.Text),
+  });
   const QueryResult = IDL.Variant({
-    'Ok' : IDL.Vec(IDL.Vec(IDL.Text)),
+    'Ok' : QueryResultWithColumns,
     'Err' : Error,
   });
   return IDL.Service({
