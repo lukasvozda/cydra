@@ -124,7 +124,7 @@ ON o.product_id = p.id`,
         
         if ('Ok' in queryResult) {
           result = queryResult.Ok;
-          rowsAffected = Array.isArray(result) ? result.length : 0;
+          rowsAffected = result && result.data && Array.isArray(result.data) ? result.data.length : 0;
           console.log('SELECT result:', result);
         } else {
           throw new Error(queryResult.Err?.CanisterError?.message || 'Query failed');
