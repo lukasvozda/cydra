@@ -36,7 +36,7 @@ export function TableSidebar({
       id: index.toString(),
       name: table.table_name,
       rowCount: Number(table.row_count),
-      lastModified: "recently" // Backend doesn't provide this info yet
+      lastModified: "" // Backend doesn't provide this info yet
     }));
   }, [dbInfo]);
 
@@ -103,7 +103,7 @@ export function TableSidebar({
           <span className="text-sm font-medium text-muted-foreground">
             Tables ({filteredTables.length})
           </span>
-          <Button variant="outline" size="sm" onClick={() => setShowNewTableForm(true)} className="h-8">
+          <Button variant="outline" size="sm" className="h-8" disabled title="Coming soon">
             <Plus className="h-4 w-4" />
           </Button>
         </div>
@@ -142,16 +142,17 @@ export function TableSidebar({
                     <span className="text-xs text-muted-foreground">
                       {table.rowCount.toLocaleString()} rows
                     </span>
-                    <span className="text-xs text-muted-foreground">•</span>
-                    <span className="text-xs text-muted-foreground">
-                      {table.lastModified}
-                    </span>
                   </div>
                 </div>
-                <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => {
-              e.stopPropagation();
-              // Handle table settings
-            }}>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" 
+                  title="Coming soon" 
+                  onClick={e => {
+                    e.stopPropagation();
+                  }}
+                >
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </div>

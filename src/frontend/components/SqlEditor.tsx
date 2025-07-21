@@ -6,7 +6,6 @@ import {
   Play, 
   Save, 
   Download, 
-  History, 
   Zap,
   Clock,
   CheckCircle2,
@@ -301,11 +300,7 @@ ON o.product_id = p.id`,
             </div>
           )}
           
-          <Button variant="ghost" size="sm">
-            <History className="h-4 w-4" />
-          </Button>
-          
-          <Button variant="ghost" size="sm">
+          <Button variant="ghost" size="sm" disabled title="Coming soon">
             <Save className="h-4 w-4" />
           </Button>
           
@@ -414,7 +409,7 @@ ON o.product_id = p.id`,
           </div>
           
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" className="h-8">
+            <Button variant="ghost" size="sm" className="h-8" disabled title="Coming soon">
               <Download className="h-4 w-4" />
               Export
             </Button>

@@ -7,18 +7,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { 
   Table as TableIcon, 
-  Users, 
   Database, 
   Shield, 
   Plus,
   Edit3,
   Trash2,
-  Eye,
   Copy,
-  Settings,
   Info,
   BarChart3,
-  AlertCircle
+  AlertCircle,
+  HardDrive,
+  Key
 } from "lucide-react";
 
 
@@ -57,6 +56,42 @@ export function DatabasePanel({ activeTable, queryResult }: DatabasePanelProps) 
 
   // Use preview data for display
   const displayData = previewData;
+
+  // Utility functions for table size calculation
+  const estimateRowSizeBytes = (sampleRows: string[][]): number => {
+    if (sampleRows.length === 0) return 0;
+    
+    const totalBytes = sampleRows.reduce((sum, row) => {
+      const rowBytes = row.reduce((rowSum, cell) => {
+        // Estimate bytes per cell (UTF-8 encoding)
+        return rowSum + new TextEncoder().encode(cell || '').length;
+      }, 0);
+      return sum + rowBytes;
+    }, 0);
+    
+    return totalBytes / sampleRows.length; // Average bytes per row
+  };
+
+  const formatTableSize = (totalBytes: number): string => {
+    if (totalBytes < 1024) return `${Math.round(totalBytes)} B`;
+    if (totalBytes < 1024 * 1024) return `${(totalBytes / 1024).toFixed(1)} KB`;
+    if (totalBytes < 1024 * 1024 * 1024) return `${(totalBytes / (1024 * 1024)).toFixed(1)} MB`;
+    return `${(totalBytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+  };
+
+  // Calculate estimated table size from sample data
+  const estimatedTableSize = useMemo(() => {
+    if (!activeTable || !previewData || previewData.length === 0) {
+      return "0 B";
+    }
+    
+    const avgRowSizeBytes = estimateRowSizeBytes(previewData);
+    const totalBytes = activeTable.rowCount * avgRowSizeBytes;
+    // Add ~20% overhead for SQLite metadata, indexes, etc.
+    const totalBytesWithOverhead = totalBytes * 1.2;
+    
+    return formatTableSize(totalBytesWithOverhead);
+  }, [activeTable, previewData]);
 
   // Show query results if available
   if (queryResult) {
@@ -186,19 +221,12 @@ export function DatabasePanel({ activeTable, queryResult }: DatabasePanelProps) 
                 <span className="text-sm text-muted-foreground">
                   {activeTable.rowCount.toLocaleString()} rows
                 </span>
-                <span className="text-sm text-muted-foreground">•</span>
-                <span className="text-sm text-muted-foreground">
-                  Updated {activeTable.lastModified}
-                </span>
               </div>
             </div>
           </div>
           
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm">
-              <Settings className="h-4 w-4" />
-            </Button>
-            <Button variant="elegant" size="sm">
+            <Button variant="elegant" size="sm" disabled title="Coming soon">
               <Plus className="h-4 w-4 mr-2" />
               Add Row
             </Button>
@@ -225,6 +253,7 @@ export function DatabasePanel({ activeTable, queryResult }: DatabasePanelProps) 
             <TabsTrigger value="permissions" className="flex items-center gap-2">
               <Shield className="h-4 w-4" />
               Access
+              <Badge variant="secondary" className="text-xs bg-muted text-muted-foreground ml-1">Soon</Badge>
             </TabsTrigger>
           </TabsList>
         </div>
@@ -259,11 +288,11 @@ export function DatabasePanel({ activeTable, queryResult }: DatabasePanelProps) 
               <Card className="p-4 bg-background/50 border-border">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-info/10 rounded-lg">
-                    <Users className="h-5 w-5 text-info" />
+                    <HardDrive className="h-5 w-5 text-info" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-foreground">2.4MB</p>
-                    <p className="text-sm text-muted-foreground">Size</p>
+                    <p className="text-2xl font-bold text-foreground">{estimatedTableSize}</p>
+                    <p className="text-sm text-muted-foreground">Est. Size</p>
                   </div>
                 </div>
               </Card>
@@ -274,27 +303,50 @@ export function DatabasePanel({ activeTable, queryResult }: DatabasePanelProps) 
                     <Shield className="h-5 w-5 text-warning" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-foreground">RLS</p>
-                    <p className="text-sm text-muted-foreground">Enabled</p>
+                    <p className="text-2xl font-bold text-foreground">Public</p>
+                    <p className="text-sm text-muted-foreground">Access</p>
                   </div>
                 </div>
               </Card>
             </div>
 
-            <Card className="p-4 bg-background/30 border-border">
-              <h3 className="font-medium text-foreground mb-3">Recent Activity</h3>
+            <Card className="p-4 bg-background/30 border-border opacity-50">
+              <div className="flex items-center gap-2 mb-3">
+                <h3 className="font-medium text-foreground">Recent Activity</h3>
+                <Badge variant="secondary" className="text-xs bg-muted text-muted-foreground">Soon</Badge>
+              </div>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Table created</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">admin</span>
+                    <span className="text-xs text-muted-foreground">•</span>
+                    <span className="text-xs text-muted-foreground">5 days ago</span>
+                  </div>
+                </div>
+                <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">8 new rows inserted</span>
-                  <span className="text-xs text-muted-foreground">2 hours ago</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">alice</span>
+                    <span className="text-xs text-muted-foreground">•</span>
+                    <span className="text-xs text-muted-foreground">2 hours ago</span>
+                  </div>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Schema updated</span>
-                  <span className="text-xs text-muted-foreground">1 day ago</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">bob</span>
+                    <span className="text-xs text-muted-foreground">•</span>
+                    <span className="text-xs text-muted-foreground">1 day ago</span>
+                  </div>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Permissions modified</span>
-                  <span className="text-xs text-muted-foreground">3 days ago</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">admin</span>
+                    <span className="text-xs text-muted-foreground">•</span>
+                    <span className="text-xs text-muted-foreground">3 days ago</span>
+                  </div>
                 </div>
               </div>
             </Card>
@@ -305,8 +357,8 @@ export function DatabasePanel({ activeTable, queryResult }: DatabasePanelProps) 
               <div className="flex items-center justify-between">
                 <h3 className="font-medium text-foreground">Preview ({displayData.length} rows)</h3>
                 <div className="flex gap-2">
-                  <Input placeholder="Search..." className="w-64 bg-background/50" />
-                  <Button variant="outline" size="sm">
+                  <Input placeholder="Search..." className="w-64 bg-background/50" disabled title="Coming soon" />
+                  <Button variant="outline" size="sm" disabled title="Coming soon">
                     <Plus className="h-4 w-4 mr-2" />
                     Insert Row
                   </Button>
@@ -360,16 +412,13 @@ export function DatabasePanel({ activeTable, queryResult }: DatabasePanelProps) 
                             ))}
                             <td className="px-4 py-2 text-right">
                               <div className="flex items-center justify-end gap-1">
-                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" disabled title="Coming soon">
                                   <Edit3 className="h-4 w-4" />
                                 </Button>
-                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" disabled title="Coming soon">
                                   <Copy className="h-4 w-4" />
                                 </Button>
-                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive">
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive" disabled title="Coming soon">
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
                               </div>
@@ -388,7 +437,7 @@ export function DatabasePanel({ activeTable, queryResult }: DatabasePanelProps) 
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="font-medium text-foreground">Table Schema</h3>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" disabled title="Coming soon">
                   <Plus className="h-4 w-4 mr-2" />
                   Add Column
                 </Button>
@@ -413,10 +462,10 @@ export function DatabasePanel({ activeTable, queryResult }: DatabasePanelProps) 
                         </div>
                       </div>
                       <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0" disabled title="Coming soon">
                           <Edit3 className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive">
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive" disabled title="Coming soon">
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
@@ -429,30 +478,20 @@ export function DatabasePanel({ activeTable, queryResult }: DatabasePanelProps) 
 
           <TabsContent value="permissions" className="p-6">
             <div className="space-y-6">
-              <div>
-                <h3 className="font-medium text-foreground mb-3">Row Level Security</h3>
-                <Card className="p-4 bg-background/30 border-border">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium text-foreground">RLS Enabled</p>
-                      <p className="text-sm text-muted-foreground">All queries will be filtered by user policies</p>
-                    </div>
-                    <Badge variant="secondary" className="bg-success/10 text-success">Active</Badge>
-                  </div>
-                </Card>
-              </div>
-
-              <div>
-                <h3 className="font-medium text-foreground mb-3">Access Policies</h3>
+              <div className="opacity-50">
+                <div className="flex items-center gap-2 mb-3">
+                  <h3 className="font-medium text-foreground">Access Policies</h3>
+                  <Badge variant="secondary" className="text-xs bg-muted text-muted-foreground">Soon</Badge>
+                </div>
                 <div className="space-y-2">
                   <Card className="p-4 bg-background/30 border-border">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="font-medium text-foreground">Select Policy</p>
-                        <p className="text-sm text-muted-foreground">Users can view their own records</p>
+                        <p className="font-medium text-foreground">Read Policy</p>
+                        <p className="text-sm text-muted-foreground">Control who can view table data</p>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge variant="outline">authenticated</Badge>
+                        <Badge variant="outline">Public</Badge>
                         <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                           <Edit3 className="h-4 w-4" />
                         </Button>
@@ -463,11 +502,11 @@ export function DatabasePanel({ activeTable, queryResult }: DatabasePanelProps) 
                   <Card className="p-4 bg-background/30 border-border">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="font-medium text-foreground">Insert Policy</p>
-                        <p className="text-sm text-muted-foreground">Users can create records</p>
+                        <p className="font-medium text-foreground">Write Policy</p>
+                        <p className="text-sm text-muted-foreground">Control who can modify table data</p>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge variant="outline">authenticated</Badge>
+                        <Badge variant="outline">Owner</Badge>
                         <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                           <Edit3 className="h-4 w-4" />
                         </Button>
@@ -475,6 +514,29 @@ export function DatabasePanel({ activeTable, queryResult }: DatabasePanelProps) 
                     </div>
                   </Card>
                 </div>
+              </div>
+
+              <div className="opacity-50">
+                <div className="flex items-center gap-2 mb-3">
+                  <h3 className="font-medium text-foreground">Encryption</h3>
+                  <Badge variant="secondary" className="text-xs bg-muted text-muted-foreground">Soon</Badge>
+                </div>
+                <Card className="p-4 bg-background/30 border-border">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-primary/10 rounded-lg">
+                        <Key className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-foreground">VetKeys Encryption</p>
+                        <p className="text-sm text-muted-foreground">Encrypt your data using vetKeys for enhanced security</p>
+                      </div>
+                    </div>
+                    <Button variant="outline" size="sm">
+                      Configure
+                    </Button>
+                  </div>
+                </Card>
               </div>
             </div>
           </TabsContent>
