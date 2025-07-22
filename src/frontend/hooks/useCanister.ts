@@ -79,6 +79,27 @@ export const useTableData = (tableName: string | undefined) => {
   });
 };
 
+// Hook for paginated queries
+export const usePaginatedQuery = (sql: string, page: number, pageSize: number, enabled: boolean = true) => {
+  return useQuery({
+    queryKey: ["paginatedQuery", sql, page, pageSize],
+    queryFn: async () => {
+      if (!sql.trim()) {
+        return null;
+      }
+      
+      const result = await CanisterService.queryPaginatedSQL(sql, page, pageSize);
+      if ("Ok" in result) {
+        return result.Ok;
+      } else {
+        throw new Error(result.Err?.CanisterError?.message || "Failed to query paginated SQL");
+      }
+    },
+    enabled: enabled && !!sql.trim(),
+    staleTime: 30000, // Consider data fresh for 30 seconds
+  });
+};
+
 // Hook to get canister stats
 export const useCanisterStats = () => {
   return useQuery({

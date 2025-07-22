@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
+import { usePaginatedQuery } from "@/hooks/useCanister";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -29,17 +30,21 @@ interface SqlEditorProps {
     duration: number;
     timestamp: Date;
     status: 'success' | 'error';
+    isPaginated?: boolean;
   } | null) => void;
 }
 
 export function SqlEditor({ activeTable, onQueryResult }: SqlEditorProps) {
   const [query, setQuery] = useState(`SELECT * FROM ${activeTable?.name || 'person'} LIMIT 10;`);
+  const [, setUsePagination] = useState(false);
+  const [pageSize] = useState(10);
   const [lastExecution, setLastExecution] = useState<{
     duration: number;
     rowsAffected: number;
     status: 'success' | 'error';
     timestamp: Date;
     result?: any;
+    isPaginated?: boolean;
   } | null>(null);
 
   const [queryHistory] = useState([
@@ -67,12 +72,37 @@ ON o.product_id = p.id`,
 
   const [isExecuting, setIsExecuting] = useState(false);
   
+  // Detect if query should use pagination - always paginate SELECT queries
+  const shouldUsePagination = (sql: string) => {
+    const trimmedSql = sql.trim().toUpperCase();
+    return trimmedSql.startsWith('SELECT');
+  };
+
+  // Store the executed query separately from the input query
+  const [executedQuery, setExecutedQuery] = useState<string>("");
+  
+  // Use paginated query hook only for executed queries (keeping hook for consistency but not displaying pagination controls here)
+  usePaginatedQuery(
+    executedQuery, 
+    0, 
+    pageSize, 
+    false // Disabled since we handle pagination in handleRunQuery directly
+  );
+
   // Update default query when active table changes
   useEffect(() => {
     if (activeTable) {
       setQuery(`SELECT * FROM ${activeTable.name} LIMIT 10;`);
     }
   }, [activeTable]);
+
+  // Auto-detect if pagination should be used only for executed queries
+  useEffect(() => {
+    if (executedQuery) {
+      const shouldPaginate = shouldUsePagination(executedQuery);
+      setUsePagination(shouldPaginate);
+    }
+  }, [executedQuery]);
 
   // SQL autocomplete suggestions
   const sqlCompletions = [
@@ -106,28 +136,36 @@ ON o.product_id = p.id`,
       return;
     }
 
+    const trimmedQuery = query.trim();
+    const shouldPaginate = shouldUsePagination(trimmedQuery);
+    
+    // Set the executed query to trigger pagination hook if needed
+    setExecutedQuery(trimmedQuery);
+    
     setIsExecuting(true);
     const startTime = performance.now();
     
     try {
-      const trimmedQuery = query.trim();
       const upperQuery = trimmedQuery.toUpperCase();
       
       let result;
       let rowsAffected = 0;
+      let isPaginated = false;
       
       // Check if it's a SELECT query (read-only)
       if (upperQuery.startsWith('SELECT')) {
-        // For SELECT queries, use the CanisterService.querySQL method directly
-        const { CanisterService } = await import("@/lib/canister");
-        const queryResult = await CanisterService.querySQL(trimmedQuery);
-        
-        if ('Ok' in queryResult) {
-          result = queryResult.Ok;
-          rowsAffected = result && result.data && Array.isArray(result.data) ? result.data.length : 0;
-          console.log('SELECT result:', result);
-        } else {
-          throw new Error(queryResult.Err?.CanisterError?.message || 'Query failed');
+        if (shouldPaginate) {
+          // Use paginated query for all SELECT queries
+          const { CanisterService } = await import("@/lib/canister");
+          const paginatedQueryResult = await CanisterService.queryPaginatedSQL(trimmedQuery, 0, pageSize);
+          
+          if ('Ok' in paginatedQueryResult) {
+            result = paginatedQueryResult.Ok;
+            rowsAffected = result.data?.length || 0;
+            isPaginated = true;
+          } else {
+            throw new Error(paginatedQueryResult.Err?.CanisterError?.message || 'Paginated query failed');
+          }
         }
       } else {
         // For DDL/DML queries, use the execute method
@@ -137,7 +175,6 @@ ON o.product_id = p.id`,
         if ('Ok' in executeResult) {
           result = executeResult.Ok;
           rowsAffected = 1; // We don't get exact row count from backend for non-SELECT
-          console.log('Execute result:', result);
         } else {
           throw new Error(executeResult.Err?.CanisterError?.message || 'Execute failed');
         }
@@ -151,7 +188,8 @@ ON o.product_id = p.id`,
         rowsAffected,
         status: 'success',
         timestamp,
-        result
+        result,
+        isPaginated
       });
       
       // Pass result to parent component
@@ -160,10 +198,9 @@ ON o.product_id = p.id`,
         query: trimmedQuery,
         duration,
         timestamp,
-        status: 'success'
+        status: 'success',
+        isPaginated
       });
-      
-      console.log(`Query executed successfully in ${duration}ms`);
       
     } catch (error) {
       const duration = Math.round(performance.now() - startTime);
@@ -297,8 +334,15 @@ ON o.product_id = p.id`,
               <span>{lastExecution.duration}ms</span>
               <span>•</span>
               <span>{lastExecution.rowsAffected} rows</span>
+              {lastExecution.isPaginated && (
+                <>
+                  <span>•</span>
+                  <Badge variant="secondary" className="text-xs">Paginated</Badge>
+                </>
+              )}
             </div>
           )}
+
           
           <Button variant="ghost" size="sm" disabled title="Coming soon">
             <Save className="h-4 w-4" />
@@ -390,6 +434,7 @@ ON o.product_id = p.id`,
           </div>
         )}
       </div>
+
 
       {/* Quick Actions */}
       <div className="p-3 border-t border-border bg-background/10 flex-shrink-0">

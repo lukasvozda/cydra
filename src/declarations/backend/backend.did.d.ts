@@ -17,6 +17,16 @@ export type DatabaseInfoResult = { 'Ok' : DatabaseInfo } |
   { 'Err' : Error };
 export type Error = { 'CanisterError' : { 'message' : string } } |
   { 'InvalidCanister' : null };
+export interface PaginatedQueryResult {
+  'page_size' : number,
+  'data' : Array<Array<string>>,
+  'page' : number,
+  'total_count' : bigint,
+  'columns' : Array<string>,
+  'has_more' : boolean,
+}
+export type PaginatedResult = { 'Ok' : PaginatedQueryResult } |
+  { 'Err' : Error };
 export type QueryResult = { 'Ok' : QueryResultWithColumns } |
   { 'Err' : Error };
 export interface QueryResultWithColumns {
@@ -38,6 +48,7 @@ export interface _SERVICE {
   'get_database_info' : ActorMethod<[], DatabaseInfoResult>,
   'instruction_counter' : ActorMethod<[], bigint>,
   'query' : ActorMethod<[string], QueryResult>,
+  'query_paginated' : ActorMethod<[string, number, number], PaginatedResult>,
 }
 export declare const idlFactory: IDL.InterfaceFactory;
 export declare const init: (args: { IDL: typeof IDL }) => IDL.Type[];

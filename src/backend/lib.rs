@@ -76,6 +76,92 @@ fn query(sql: String) -> QueryResult {
     })
 }
 
+#[query]
+fn query_paginated(sql: String, page: u32, page_size: u32) -> PaginatedResult {
+    let conn = ic_sqlite::CONN.lock().unwrap();
+    
+    // Validate page_size to prevent abuse
+    let validated_page_size = if page_size == 0 { 100 } else { page_size.min(1000) };
+    let offset = page * validated_page_size;
+    
+    // Clean the SQL by removing trailing semicolons and whitespace
+    let cleaned_sql = sql.trim().trim_end_matches(';').trim();
+    
+    // Step 1: Get the total count using a subquery approach
+    let count_sql = format!("SELECT COUNT(*) FROM ({}) AS count_subquery", cleaned_sql);
+    let total_count: u64 = match conn.query_row(&count_sql, [], |row| row.get(0)) {
+        Ok(count) => count,
+        Err(err) => return Err(Error::CanisterError { message: format!("Failed to get count: {:?}", err) })
+    };
+    
+    // Step 2: Get the paginated data
+    // Check if the query already has LIMIT or ORDER BY clauses and handle accordingly
+    let paginated_sql = if cleaned_sql.to_uppercase().contains("LIMIT") || cleaned_sql.to_uppercase().contains("ORDER BY") {
+        // If query has LIMIT or ORDER BY, wrap it in a subquery
+        format!("SELECT * FROM ({}) AS subquery LIMIT {} OFFSET {}", cleaned_sql, validated_page_size, offset)
+    } else {
+        // Simple case: just add LIMIT and OFFSET
+        format!("{} LIMIT {} OFFSET {}", cleaned_sql, validated_page_size, offset)
+    };
+    let mut stmt = match conn.prepare(&paginated_sql) {
+        Ok(stmt) => stmt,
+        Err(err) => return Err(Error::CanisterError { message: format!("Failed to prepare paginated query: {:?}", err) })
+    };
+    
+    let cnt = stmt.column_count();
+    
+    // Get column names once
+    let mut columns = Vec::new();
+    for idx in 0..cnt {
+        columns.push(stmt.column_name(idx).unwrap().to_string());
+    }
+    
+    let mut rows = match stmt.query([]) {
+        Ok(rows) => rows,
+        Err(err) => return Err(Error::CanisterError { message: format!("Failed to execute paginated query: {:?}", err) })
+    };
+    
+    let mut data_rows: Vec<Vec<String>> = Vec::new();
+    
+    loop {
+        match rows.next() {
+            Ok(row) => {
+                match row {
+                    Some(row) => {
+                        let mut row_values = Vec::new();
+                        for idx in 0..cnt {
+                            let v = row.get_ref_unwrap(idx);
+                            let value = match v.data_type() {
+                                Type::Null => String::from(""),
+                                Type::Integer => v.as_i64().unwrap().to_string(),
+                                Type::Real => v.as_f64().unwrap().to_string(),
+                                Type::Text => v.as_str().unwrap().to_string(),
+                                Type::Blob => hex::encode(v.as_blob().unwrap())
+                            };
+                            row_values.push(value);
+                        }
+                        data_rows.push(row_values);
+                    },
+                    None => break
+                }
+            },
+            Err(err) => return Err(Error::CanisterError { message: format!("Row iteration error: {:?}", err) })
+        }
+    }
+    
+    // Calculate if there are more pages
+    let has_more = (offset + validated_page_size) < total_count as u32;
+    
+    Ok(PaginatedQueryResult {
+        columns,
+        data: data_rows,
+        total_count,
+        page,
+        page_size: validated_page_size,
+        has_more,
+    })
+}
+
 #[derive(CandidType, Deserialize)]
 enum Error {
     InvalidCanister,
@@ -85,6 +171,8 @@ enum Error {
 type Result<T = String, E = Error> = std::result::Result<T, E>;
 
 type QueryResult<T = QueryResultWithColumns, E = Error> = std::result::Result<T, E>;
+
+type PaginatedResult<T = PaginatedQueryResult, E = Error> = std::result::Result<T, E>;
 
 impl From<(RejectionCode, String)> for Error {
     fn from((code, message): (RejectionCode, String)) -> Self {
@@ -99,6 +187,16 @@ impl From<(RejectionCode, String)> for Error {
 struct QueryResultWithColumns {
     columns: Vec<String>,
     data: Vec<Vec<String>>,
+}
+
+#[derive(CandidType, Deserialize)]
+struct PaginatedQueryResult {
+    columns: Vec<String>,
+    data: Vec<Vec<String>>,
+    total_count: u64,
+    page: u32,
+    page_size: u32,
+    has_more: bool,
 }
 
 #[derive(CandidType, Deserialize)]
