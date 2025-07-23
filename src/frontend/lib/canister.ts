@@ -44,7 +44,17 @@ export interface QueryResultWithColumns {
   data: string[][];
 }
 
+export interface PaginatedQueryResult {
+  columns: string[];
+  data: string[][];
+  total_count: bigint;
+  page: number;
+  page_size: number;
+  has_more: boolean;
+}
+
 export type QueryResult = { Ok: QueryResultWithColumns } | { Err: any };
+export type PaginatedResult = { Ok: PaginatedQueryResult } | { Err: any };
 export type ExecuteResult = { Ok: string } | { Err: any };
 export type DatabaseInfoResult = { Ok: DatabaseInfo } | { Err: any };
 
@@ -69,6 +79,16 @@ export class CanisterService {
       return result as QueryResult;
     } catch (error) {
       console.error("Error querying SQL:", error);
+      return { Err: { CanisterError: { message: String(error) } } };
+    }
+  }
+
+  static async queryPaginatedSQL(sql: string, page: number, pageSize: number): Promise<PaginatedResult> {
+    try {
+      const result = await backend.query_paginated(sql, page, pageSize);
+      return result as PaginatedResult;
+    } catch (error) {
+      console.error("Error querying paginated SQL:", error);
       return { Err: { CanisterError: { message: String(error) } } };
     }
   }

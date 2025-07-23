@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Database, Table as TableIcon, Search, MoreHorizontal, RefreshCw } from "lucide-react";
 import { useDatabaseInfo, useCanisterStats } from "@/hooks/useCanister";
 import { UserSection } from "./UserSection";
+import { canisterId } from "../../declarations/backend";
 interface Table {
   id: string;
   name: string;
@@ -57,6 +58,7 @@ export function TableSidebar({
     refetch();
     console.log("Database info refreshed");
   };
+
   return <div className="w-80 h-screen bg-gradient-card border-r border-border flex flex-col">
       {/* Header */}
       <div className="p-6 border-b border-border">
@@ -180,6 +182,13 @@ export function TableSidebar({
             <span className="text-xs text-foreground">
               {statsLoading ? "Loading..." : canisterStats ? 
                 `${(Number(canisterStats.balance) / 1_000_000_000_000).toFixed(2)}T` : "0T"}
+            </span>
+          </div>
+
+          <div className="flex justify-between items-center">
+            <span className="text-xs text-muted-foreground">Canister ID:</span>
+            <span className="text-xs text-foreground font-mono">
+              {canisterId}
             </span>
           </div>
         </div>

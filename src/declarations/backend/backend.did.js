@@ -34,12 +34,29 @@ export const idlFactory = ({ IDL }) => {
     'Ok' : QueryResultWithColumns,
     'Err' : Error,
   });
+  const PaginatedQueryResult = IDL.Record({
+    'page_size' : IDL.Nat32,
+    'data' : IDL.Vec(IDL.Vec(IDL.Text)),
+    'page' : IDL.Nat32,
+    'total_count' : IDL.Nat64,
+    'columns' : IDL.Vec(IDL.Text),
+    'has_more' : IDL.Bool,
+  });
+  const PaginatedResult = IDL.Variant({
+    'Ok' : PaginatedQueryResult,
+    'Err' : Error,
+  });
   return IDL.Service({
     'balance' : IDL.Func([], [IDL.Nat64], ['query']),
     'execute' : IDL.Func([IDL.Text], [Result], []),
     'get_database_info' : IDL.Func([], [DatabaseInfoResult], ['query']),
     'instruction_counter' : IDL.Func([], [IDL.Nat64], ['query']),
     'query' : IDL.Func([IDL.Text], [QueryResult], ['query']),
+    'query_paginated' : IDL.Func(
+        [IDL.Text, IDL.Nat32, IDL.Nat32],
+        [PaginatedResult],
+        ['query'],
+      ),
   });
 };
 export const init = ({ IDL }) => { return []; };

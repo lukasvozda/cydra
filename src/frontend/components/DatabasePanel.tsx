@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
-import { useDatabaseInfo } from "@/hooks/useCanister";
+import { useDatabaseInfo, usePaginatedQuery } from "@/hooks/useCanister";
+import { Pagination } from "@/components/Pagination";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -29,19 +30,45 @@ interface DatabasePanelProps {
     lastModified: string;
   };
   queryResult?: {
-    data: { columns: string[]; data: string[][] } | null;
+    data: { columns: string[]; data: string[][] } | { columns: string[]; data: string[][]; total_count: number; page: number; page_size: number; has_more: boolean; } | null;
     query: string;
     duration: number;
     timestamp: Date;
     status: 'success' | 'error';
+    isPaginated?: boolean;
   } | null;
 }
 
 export function DatabasePanel({ activeTable, queryResult }: DatabasePanelProps) {
   const [selectedTab, setSelectedTab] = useState("overview");
+  const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+  
+  // Pagination state for query results
+  const [queryPageSize, setQueryPageSize] = useState(10);
+  const [queryCurrentPage, setQueryCurrentPage] = useState(0);
   
   // Get database info to access real schema and preview data
-  const { data: dbInfo, isLoading: isLoadingData, error: dataError } = useDatabaseInfo();
+  const { data: dbInfo } = useDatabaseInfo();
+  
+  // Paginated query for table data
+  const tableQuery = activeTable ? `SELECT * FROM ${activeTable.name}` : "";
+  const { 
+    data: paginatedData, 
+    isLoading: isPaginatedLoading, 
+    error: paginatedError 
+  } = usePaginatedQuery(tableQuery, currentPage, pageSize, !!activeTable && selectedTab === "data");
+  
+  // Paginated query for query results when needed
+  const { 
+    data: queryPaginatedData, 
+    isLoading: isQueryPaginatedLoading 
+  } = usePaginatedQuery(
+    queryResult?.query || "", 
+    queryCurrentPage, 
+    queryPageSize, 
+    !!(queryResult?.isPaginated && (queryCurrentPage > 0 || (queryResult.data && 'page_size' in queryResult.data && queryPageSize !== queryResult.data.page_size))) // Fetch when navigating pages or when page size differs from original
+  );
 
   // Get real columns and preview data from database info for the active table
   const { columns, previewData } = useMemo(() => {
@@ -54,8 +81,20 @@ export function DatabasePanel({ activeTable, queryResult }: DatabasePanelProps) 
     };
   }, [activeTable, dbInfo]);
 
-  // Use preview data for display
-  const displayData = previewData;
+  // Use paginated data for display when available, fallback to preview data
+  const displayData = (paginatedData?.data as string[][]) || previewData;
+  const displayColumns = (paginatedData?.columns as string[]) || columns.map(col => col.name);
+
+
+  // Pagination handlers
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+  };
+
+  const handlePageSizeChange = (newPageSize: number) => {
+    setCurrentPage(0); // Reset to first page when page size changes
+    setPageSize(newPageSize);
+  };
 
   // Utility functions for table size calculation
   const estimateRowSizeBytes = (sampleRows: string[][]): number => {
@@ -128,62 +167,101 @@ export function DatabasePanel({ activeTable, queryResult }: DatabasePanelProps) 
         </div>
 
         {/* Query Results Content */}
-        <div className="flex-1 overflow-auto p-6">
-          {queryResult.status === 'error' ? (
-            <div className="text-center space-y-4">
-              <div className="p-4 bg-destructive/10 rounded-full w-16 h-16 flex items-center justify-center mx-auto">
-                <AlertCircle className="h-8 w-8 text-destructive" />
-              </div>
-              <div>
-                <h3 className="text-lg font-medium text-foreground">Query Failed</h3>
-                <p className="text-muted-foreground">There was an error executing your query</p>
-              </div>
-            </div>
-          ) : queryResult.data && queryResult.data.data && Array.isArray(queryResult.data.data) && queryResult.data.data.length > 0 ? (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-medium text-foreground">Results ({queryResult.data.data.length} rows)</h3>
-                <code className="text-xs bg-muted px-2 py-1 rounded">{queryResult.query}</code>
-              </div>
-              
-              <div className="rounded-lg border border-border overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-background/30 border-b border-border">
-                      <tr>
-                        {queryResult.data.columns.map((columnName: string, colIndex: number) => (
-                          <th key={colIndex} className="px-4 py-2 text-left text-sm font-medium text-foreground">
-                            {columnName}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {queryResult.data.data.map((row: string[], rowIndex: number) => (
-                        <tr key={rowIndex} className="border-b border-border hover:bg-background/20 transition-colors">
-                          {row.map((cellValue: string, colIndex: number) => (
-                            <td key={colIndex} className="px-4 py-2 text-sm text-foreground">
-                              {cellValue !== null && cellValue !== undefined && cellValue !== "" ? String(cellValue) : 'NULL'}
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 overflow-auto p-6">
+            {queryResult.status === 'error' ? (
+              <div className="text-center space-y-4">
+                <div className="p-4 bg-destructive/10 rounded-full w-16 h-16 flex items-center justify-center mx-auto">
+                  <AlertCircle className="h-8 w-8 text-destructive" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-medium text-foreground">Query Failed</h3>
+                  <p className="text-muted-foreground">There was an error executing your query</p>
                 </div>
               </div>
-            </div>
-          ) : (
-            <div className="text-center space-y-4">
-              <div className="p-4 bg-muted/20 rounded-full w-16 h-16 flex items-center justify-center mx-auto">
-                <Database className="h-8 w-8 text-muted-foreground" />
+            ) : queryResult.data && queryResult.data.data && Array.isArray(queryResult.data.data) && queryResult.data.data.length > 0 ? (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-medium text-foreground">
+                    Results ({(() => {
+                      // Show the actual displayed data length
+                      const displayData = queryCurrentPage === 0 && queryResult.data && 'page_size' in queryResult.data && queryPageSize === queryResult.data.page_size 
+                        ? queryResult.data.data 
+                        : queryPaginatedData?.data || [];
+                      return displayData.length;
+                    })()} rows
+                    {queryResult.isPaginated && 'total_count' in queryResult.data && (
+                      <span className="text-muted-foreground"> of {Number(queryResult.data.total_count).toLocaleString()} total</span>
+                    )})
+                  </h3>
+                  <code className="text-xs bg-muted px-2 py-1 rounded">{queryResult.query}</code>
+                </div>
+                
+                <div className="rounded-lg border border-border overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-background/30 border-b border-border">
+                        <tr>
+                          <th className="px-4 py-2 text-left text-sm font-medium text-foreground w-16">
+                            #
+                          </th>
+                          {queryResult.data.columns.map((columnName: string, colIndex: number) => (
+                            <th key={colIndex} className="px-4 py-2 text-left text-sm font-medium text-foreground">
+                              {columnName}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {/* Show current query result or paginated data */}
+                        {(queryCurrentPage === 0 && queryResult.data && 'page_size' in queryResult.data && queryPageSize === queryResult.data.page_size ? queryResult.data.data : queryPaginatedData?.data || []).map((row: string[], rowIndex: number) => {
+                          const actualRowNumber = queryCurrentPage * queryPageSize + rowIndex + 1;
+                          return (
+                            <tr key={rowIndex} className="border-b border-border hover:bg-background/20 transition-colors">
+                              <td className="px-4 py-2 text-sm text-muted-foreground w-16">
+                                {actualRowNumber}
+                              </td>
+                              {row.map((cellValue: string, colIndex: number) => (
+                                <td key={colIndex} className="px-4 py-2 text-sm text-foreground">
+                                  {cellValue !== null && cellValue !== undefined && cellValue !== "" ? String(cellValue) : 'NULL'}
+                                </td>
+                              ))}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
-              <div>
-                <h3 className="text-lg font-medium text-foreground">Query Executed</h3>
-                <p className="text-muted-foreground">No results returned</p>
-                <code className="text-xs bg-muted px-2 py-1 rounded mt-2 inline-block">{queryResult.query}</code>
+            ) : (
+              <div className="text-center space-y-4">
+                <div className="p-4 bg-muted/20 rounded-full w-16 h-16 flex items-center justify-center mx-auto">
+                  <Database className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-medium text-foreground">Query Executed</h3>
+                  <p className="text-muted-foreground">No results returned</p>
+                  <code className="text-xs bg-muted px-2 py-1 rounded mt-2 inline-block">{queryResult.query}</code>
+                </div>
               </div>
-            </div>
+            )}
+          </div>
+          
+          {/* Pagination for query results */}
+          {queryResult.isPaginated && queryResult.data && 'total_count' in queryResult.data && (
+            <Pagination
+              currentPage={queryCurrentPage}
+              pageSize={queryPageSize}
+              totalCount={Number(queryResult.data.total_count)}
+              hasMore={queryResult.data.has_more || false}
+              onPageChange={setQueryCurrentPage}
+              onPageSizeChange={(newSize) => {
+                setQueryPageSize(newSize);
+                setQueryCurrentPage(0);
+              }}
+              isLoading={isQueryPaginatedLoading}
+            />
           )}
         </div>
       </Card>
@@ -352,10 +430,17 @@ export function DatabasePanel({ activeTable, queryResult }: DatabasePanelProps) 
             </Card>
           </TabsContent>
 
-          <TabsContent value="data" className="p-6">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-medium text-foreground">Preview ({displayData.length} rows)</h3>
+          <TabsContent value="data" className="p-0 flex flex-col h-full">
+            <div className="p-6 flex-1 overflow-hidden flex flex-col">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-medium text-foreground">
+                  Table Data
+                  {paginatedData && (
+                    <span className="text-sm text-muted-foreground ml-2">
+                      ({Number(paginatedData.total_count || 0).toLocaleString()} total rows)
+                    </span>
+                  )}
+                </h3>
                 <div className="flex gap-2">
                   <Input placeholder="Search..." className="w-64 bg-background/50" disabled title="Coming soon" />
                   <Button variant="outline" size="sm" disabled title="Coming soon">
@@ -365,70 +450,95 @@ export function DatabasePanel({ activeTable, queryResult }: DatabasePanelProps) 
                 </div>
               </div>
 
-              <div className="rounded-lg border border-border overflow-hidden">
-                <div className="overflow-x-auto">
+              <div className="flex-1 rounded-lg border border-border overflow-hidden flex flex-col">
+                <div className="flex-1 overflow-auto">
                   <table className="w-full">
-                    <thead className="bg-background/30 border-b border-border">
+                    <thead className="bg-background/30 border-b border-border sticky top-0">
                       <tr>
-                        {columns.map((column) => (
-                          <th key={column.name} className="px-4 py-2 text-left text-sm font-medium text-foreground">
-                            <div className="flex items-center gap-2">
-                              {column.name}
-                              {column.primary_key && (
-                                <Badge variant="secondary" className="text-xs">PK</Badge>
-                              )}
-                            </div>
-                          </th>
-                        ))}
+                        <th className="px-4 py-2 text-left text-sm font-medium text-foreground w-16">
+                          #
+                        </th>
+                        {displayColumns.map((columnName: string, index: number) => {
+                          const columnInfo = columns.find(col => col.name === columnName);
+                          return (
+                            <th key={index} className="px-4 py-2 text-left text-sm font-medium text-foreground">
+                              <div className="flex items-center gap-2">
+                                {columnName}
+                                {columnInfo?.primary_key && (
+                                  <Badge variant="secondary" className="text-xs">PK</Badge>
+                                )}
+                              </div>
+                            </th>
+                          );
+                        })}
                         <th className="px-4 py-2 text-right text-sm font-medium text-foreground">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {isLoadingData ? (
+                      {isPaginatedLoading ? (
                         <tr>
-                          <td colSpan={columns.length + 1} className="px-4 py-8 text-center text-muted-foreground">
+                          <td colSpan={displayColumns.length + 2} className="px-4 py-8 text-center text-muted-foreground">
                             Loading table data...
                           </td>
                         </tr>
-                      ) : dataError ? (
+                      ) : paginatedError ? (
                         <tr>
-                          <td colSpan={columns.length + 1} className="px-4 py-8 text-center text-destructive">
-                            Error loading data: {dataError.message}
+                          <td colSpan={displayColumns.length + 2} className="px-4 py-8 text-center text-destructive">
+                            Error loading data: {paginatedError.message}
                           </td>
                         </tr>
                       ) : displayData.length === 0 ? (
                         <tr>
-                          <td colSpan={columns.length + 1} className="px-4 py-8 text-center text-muted-foreground">
+                          <td colSpan={displayColumns.length + 2} className="px-4 py-8 text-center text-muted-foreground">
                             No data available
                           </td>
                         </tr>
                       ) : (
-                        displayData.map((row: string[], rowIndex: number) => (
-                          <tr key={rowIndex} className="border-b border-border hover:bg-background/20 transition-colors">
-                            {row.map((cellValue: string, colIndex: number) => (
-                              <td key={colIndex} className="px-4 py-2 text-sm text-foreground">
-                                {cellValue !== null ? String(cellValue) : 'NULL'}
+                        displayData.map((row: string[], rowIndex: number) => {
+                          const actualRowNumber = currentPage * pageSize + rowIndex + 1;
+                          return (
+                            <tr key={rowIndex} className="border-b border-border hover:bg-background/20 transition-colors">
+                              <td className="px-4 py-2 text-sm text-muted-foreground w-16">
+                                {actualRowNumber}
                               </td>
-                            ))}
-                            <td className="px-4 py-2 text-right">
-                              <div className="flex items-center justify-end gap-1">
-                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" disabled title="Coming soon">
-                                  <Edit3 className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" disabled title="Coming soon">
-                                  <Copy className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive" disabled title="Coming soon">
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))
+                              {row.map((cellValue: string, colIndex: number) => (
+                                <td key={colIndex} className="px-4 py-2 text-sm text-foreground">
+                                  {cellValue !== null ? String(cellValue) : 'NULL'}
+                                </td>
+                              ))}
+                              <td className="px-4 py-2 text-right">
+                                <div className="flex items-center justify-end gap-1">
+                                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0" disabled title="Coming soon">
+                                    <Edit3 className="h-4 w-4" />
+                                  </Button>
+                                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0" disabled title="Coming soon">
+                                    <Copy className="h-4 w-4" />
+                                  </Button>
+                                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive" disabled title="Coming soon">
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
                       )}
                     </tbody>
                   </table>
                 </div>
+                
+                {/* Pagination Component */}
+                {paginatedData && (
+                  <Pagination
+                    currentPage={currentPage}
+                    pageSize={pageSize}
+                    totalCount={Number(paginatedData.total_count || 0)}
+                    hasMore={paginatedData.has_more || false}
+                    onPageChange={handlePageChange}
+                    onPageSizeChange={handlePageSizeChange}
+                    isLoading={isPaginatedLoading}
+                  />
+                )}
               </div>
             </div>
           </TabsContent>
