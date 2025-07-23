@@ -47,10 +47,26 @@ type DatabaseInfoResult = variant {
     Err: Error;
 };
 
+// New types for paginated queries
+type PaginatedQueryResult = record {
+    columns: vec text;
+    data: vec vec text;
+    total_count: nat64;
+    page: nat32;
+    page_size: nat32;
+    has_more: bool;
+};
+
+type PaginatedResult = variant {
+    Ok: PaginatedQueryResult;
+    Err: Error;
+};
+
 service : {
     "balance": () -> (nat64) query;
     "instruction_counter": () -> (nat64) query;
     "execute": (text) -> (Result);
     "query": (text) -> (QueryResult) query;
+    "query_paginated": (text, nat32, nat32) -> (PaginatedResult) query;
     "get_database_info": () -> (DatabaseInfoResult) query;
 }

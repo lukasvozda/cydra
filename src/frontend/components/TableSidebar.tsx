@@ -64,13 +64,18 @@ export function TableSidebar({
       <div className="p-6 border-b border-border">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              <Database className="h-5 w-5 text-primary" />
+            <div className="p-1 bg-primary/10 rounded-lg">
+              <img 
+                    src="/purple_cydra.png" 
+                    alt="Cydra Logo" 
+                    className="h-10"
+                  />
+              {/* <Database className="h-5 w-5 text-primary" /> */}
             </div>
             <div>
               <h1 className="text-lg font-semibold text-foreground">CYDRA</h1>
               <p className="text-sm text-muted-foreground">
-                {dbInfo ? `${dbInfo.total_tables} tables` : "Database Manager"}
+                Cloud SQL platform
               </p>
             </div>
           </div>
