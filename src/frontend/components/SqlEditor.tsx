@@ -333,8 +333,13 @@ ON o.product_id = p.id`,
               )}
               <span>{lastExecution.duration}ms</span>
               <span>•</span>
-              <span>{lastExecution.rowsAffected} rows</span>
-              {lastExecution.isPaginated && (
+              <span>
+                {lastExecution.result && lastExecution.result.total_count 
+                  ? Number(lastExecution.result.total_count).toLocaleString()
+                  : lastExecution.rowsAffected
+                } rows
+              </span>
+              {lastExecution.isPaginated && lastExecution.result && lastExecution.result.total_count && Number(lastExecution.result.total_count) > lastExecution.rowsAffected && (
                 <>
                   <span>•</span>
                   <Badge variant="secondary" className="text-xs">Paginated</Badge>

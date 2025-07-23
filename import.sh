@@ -54,9 +54,9 @@ generate_category() {
   echo "${CATEGORIES[$RANDOM % ${#CATEGORIES[@]}]}"
 }
 
-BATCH_SIZE=100  # Number of records per batch
-TOTAL_PRODUCTS=100
-TOTAL_ORDERS=100
+BATCH_SIZE=1000  # Number of records per batch
+TOTAL_PRODUCTS=1000
+TOTAL_ORDERS=50000
 
 echo "--- Inserting $TOTAL_PRODUCTS random products in batches of $BATCH_SIZE"
 
