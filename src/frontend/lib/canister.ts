@@ -93,6 +93,16 @@ export class CanisterService {
     }
   }
 
+  static async queryPaginatedUpdateSQL(sql: string, page: number, pageSize: number): Promise<PaginatedResult> {
+    try {
+      const result = await backend.query_paginated_update(sql, page, pageSize);
+      return result as PaginatedResult;
+    } catch (error) {
+      console.error("Error querying paginated SQL via update call:", error);
+      return { Err: { CanisterError: { message: String(error) } } };
+    }
+  }
+
   static async getDatabaseInfo(): Promise<DatabaseInfoResult> {
     try {
       const result = await backend.get_database_info();

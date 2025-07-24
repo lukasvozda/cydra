@@ -55,8 +55,8 @@ generate_category() {
 }
 
 BATCH_SIZE=1000  # Number of records per batch
-TOTAL_PRODUCTS=5000
-TOTAL_ORDERS=500000
+TOTAL_PRODUCTS=10000
+TOTAL_ORDERS=1000000
 
 echo "--- Inserting $TOTAL_PRODUCTS random products in batches of $BATCH_SIZE"
 

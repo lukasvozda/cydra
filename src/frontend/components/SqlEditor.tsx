@@ -3,6 +3,12 @@ import { usePaginatedQuery } from "@/hooks/useCanister";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { 
   Play, 
   Save, 
@@ -10,7 +16,9 @@ import {
   Zap,
   Clock,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  ChevronDown,
+  Eye
 } from "lucide-react";
 import CodeMirror from '@uiw/react-codemirror';
 import { sql } from '@codemirror/lang-sql';
@@ -31,6 +39,10 @@ interface SqlEditorProps {
     timestamp: Date;
     status: 'success' | 'error';
     isPaginated?: boolean;
+    executionMode?: 'query' | 'update';
+    cyclesCost?: bigint;
+    usdCost?: number;
+    errorMessage?: string;
   } | null) => void;
 }
 
@@ -45,6 +57,9 @@ export function SqlEditor({ activeTable, onQueryResult }: SqlEditorProps) {
     timestamp: Date;
     result?: any;
     isPaginated?: boolean;
+    executionMode?: 'query' | 'update';
+    cyclesCost?: bigint;
+    usdCost?: number;
   } | null>(null);
 
   const [queryHistory] = useState([
@@ -67,10 +82,20 @@ ON o.product_id = p.id`,
   (2, 'Jane Smith',     'jane.smith@email.com',     34, '456 Oak Ave, Los Angeles, CA'),
   (3, 'Bob Johnson',    'bob.johnson@email.com',    45, '789 Pine Rd, Chicago, IL'),
   (4, 'Alice Brown',    'alice.brown@email.com',    29, '321 Elm St, Houston, TX'),
-  (5, 'Charlie Wilson', 'charlie.wilson@email.com', 52, '654 Maple Dr, Phoenix, AZ');`
+  (5, 'Charlie Wilson', 'charlie.wilson@email.com', 52, '654 Maple Dr, Phoenix, AZ');`,
+  `SELECT 
+  p.category,
+  SUM(o.quantity) as items_sold,
+  SUM(o.quantity * p.price) as revenue 
+FROM orders as o
+LEFT JOIN products as p
+ON o.product_id = p.id
+WHERE category is not null
+GROUP BY 1`  
   ]);
 
   const [isExecuting, setIsExecuting] = useState(false);
+  const [executionMode, setExecutionMode] = useState<'query' | 'update'>('query');
   
   // Detect if query should use pagination - always paginate SELECT queries
   const shouldUsePagination = (sql: string) => {
@@ -145,6 +170,31 @@ ON o.product_id = p.id`,
     setIsExecuting(true);
     const startTime = performance.now();
     
+    // Get initial balance for update calls to calculate cycle cost
+    let initialBalance: bigint | null = null;
+    if (executionMode === 'update') {
+      try {
+        const { CanisterService } = await import("@/lib/canister");
+        initialBalance = await CanisterService.getBalance();
+        
+        // Check if balance is sufficient for update calls (minimum 0.5 TC)
+        if (initialBalance !== null && initialBalance < 500_000_000_000n) {
+          const currentBalanceFormatted = Number(initialBalance).toLocaleString();
+          const requiredBalance = "500,000,000,000";
+          const currentUSD = (Number(initialBalance) / 1_000_000_000_000 * 1.44).toFixed(6);
+          const requiredUSD = (0.5 * 1.44).toFixed(6);
+          
+          throw new Error(`Insufficient cycles for update call.\n\nCurrent balance: ${currentBalanceFormatted} cycles ($${currentUSD} USD)\nMinimum required: ${requiredBalance} cycles ($${requiredUSD} USD)\n\nUpdate calls consume significant cycles and could exhaust your canister's balance. Please top up your canister with at least 0.5 TC (trillion cycles) before running update calls.\n\nFor read-only operations, use "Query Call" mode instead.`);
+        }
+      } catch (error) {
+        console.warn("Failed to get initial balance:", error);
+        // Re-throw if it's our balance check error
+        if (error instanceof Error && error.message.includes('Insufficient cycles')) {
+          throw error;
+        }
+      }
+    }
+    
     try {
       const upperQuery = trimmedQuery.toUpperCase();
       
@@ -157,7 +207,11 @@ ON o.product_id = p.id`,
         if (shouldPaginate) {
           // Use paginated query for all SELECT queries
           const { CanisterService } = await import("@/lib/canister");
-          const paginatedQueryResult = await CanisterService.queryPaginatedSQL(trimmedQuery, 0, pageSize);
+          
+          // Choose between query call or update call based on execution mode
+          const paginatedQueryResult = executionMode === 'query' 
+            ? await CanisterService.queryPaginatedSQL(trimmedQuery, 0, pageSize)
+            : await CanisterService.queryPaginatedUpdateSQL(trimmedQuery, 0, pageSize);
           
           if ('Ok' in paginatedQueryResult) {
             result = paginatedQueryResult.Ok;
@@ -168,7 +222,7 @@ ON o.product_id = p.id`,
           }
         }
       } else {
-        // For DDL/DML queries, use the execute method
+        // For DDL/DML queries, always use the execute method (update call)
         const { CanisterService } = await import("@/lib/canister");
         const executeResult = await CanisterService.executeSQL(trimmedQuery);
         
@@ -183,13 +237,35 @@ ON o.product_id = p.id`,
       const duration = Math.round(performance.now() - startTime);
       const timestamp = new Date();
       
+      // Calculate cycle cost for update calls
+      let cyclesCost: bigint | undefined;
+      let usdCost: number | undefined;
+      
+      if (executionMode === 'update' && initialBalance !== null) {
+        try {
+          const { CanisterService } = await import("@/lib/canister");
+          const finalBalance = await CanisterService.getBalance();
+          cyclesCost = initialBalance - finalBalance;
+          
+          // Convert cycles to USD: 1 Trillion cycles = 1 XDR = 1.44 USD
+          const cyclesAsNumber = Number(cyclesCost);
+          const xdrCost = cyclesAsNumber / 1_000_000_000_000; // Convert to XDR
+          usdCost = xdrCost * 1.44; // Convert XDR to USD
+        } catch (error) {
+          console.warn("Failed to calculate cycle cost:", error);
+        }
+      }
+      
       setLastExecution({
         duration,
         rowsAffected,
         status: 'success',
         timestamp,
         result,
-        isPaginated
+        isPaginated,
+        executionMode,
+        cyclesCost,
+        usdCost
       });
       
       // Pass result to parent component
@@ -199,7 +275,10 @@ ON o.product_id = p.id`,
         duration,
         timestamp,
         status: 'success',
-        isPaginated
+        isPaginated,
+        executionMode,
+        cyclesCost,
+        usdCost
       });
       
     } catch (error) {
@@ -210,20 +289,22 @@ ON o.product_id = p.id`,
         duration,
         rowsAffected: 0,
         status: 'error',
-        timestamp
+        timestamp,
+        executionMode
       });
       
-      // Pass error to parent component
+      // Pass error to parent component with full error message
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       onQueryResult?.({
         data: null,
         query: query.trim(),
         duration,
         timestamp,
-        status: 'error'
+        status: 'error',
+        errorMessage
       });
       
-      console.error(`Query failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      alert(`Query failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error(`Query failed: ${errorMessage}`);
     } finally {
       setIsExecuting(false);
     }
@@ -353,25 +434,50 @@ ON o.product_id = p.id`,
             <Save className="h-4 w-4" />
           </Button>
           
-          <Button 
-            variant="default" 
-            size="sm"
-            onClick={handleRunQuery}
-            disabled={isExecuting}
-            className="min-w-20"
-          >
-            {isExecuting ? (
-              <div className="flex items-center gap-2">
-                <div className="h-4 w-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                Running
-              </div>
-            ) : (
-              <>
-                <Play className="h-4 w-4" />
-                Run Query
-              </>
-            )}
-          </Button>
+          {/* Split button for query execution */}
+          <div className="flex">
+            <Button 
+              variant={executionMode === 'update' ? 'destructive' : 'default'}
+              size="sm"
+              onClick={() => handleRunQuery()}
+              disabled={isExecuting}
+              className="rounded-r-none min-w-20"
+            >
+              {isExecuting ? (
+                <div className="flex items-center gap-2">
+                  <div className="h-4 w-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                  Running
+                </div>
+              ) : (
+                <>
+                  <Play className="h-4 w-4" />
+                  Run Query
+                </>
+              )}
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant={executionMode === 'update' ? 'destructive' : 'default'}
+                  size="sm" 
+                  disabled={isExecuting}
+                  className="rounded-l-none border-l border-white/20 px-2"
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setExecutionMode('query')}>
+                  <Eye className="h-4 w-4 mr-2" />
+                  Query Call (Fast)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setExecutionMode('update')}>
+                  <Zap className="h-4 w-4 mr-2" />
+                  Update Call (Powerful)
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
 
@@ -444,18 +550,21 @@ ON o.product_id = p.id`,
       {/* Quick Actions */}
       <div className="p-3 border-t border-border bg-background/10 flex-shrink-0">
         <div className="flex items-center justify-between">
-          <div className="flex gap-1">
-            {queryHistory.slice(0, 3).map((historyQuery, index) => (
-              <Button
-                key={index}
-                variant="ghost"
-                size="sm"
-                className="text-xs h-8 px-2"
-                onClick={() => setQuery(historyQuery)}
-              >
-                {historyQuery.split(' ').slice(0, 3).join(' ')}...
-              </Button>
-            ))}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground font-medium">Example queries:</span>
+            <div className="flex gap-1">
+              {queryHistory.slice(0, 4).map((historyQuery, index) => (
+                <Button
+                  key={index}
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs h-8 px-2"
+                  onClick={() => setQuery(historyQuery)}
+                >
+                  {historyQuery.split(' ').slice(0, 3).join(' ')}...
+                </Button>
+              ))}
+            </div>
           </div>
           
           <div className="flex items-center gap-2">
