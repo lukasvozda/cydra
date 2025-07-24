@@ -18,7 +18,9 @@ import {
   BarChart3,
   AlertCircle,
   HardDrive,
-  Key
+  Key,
+  Eye,
+  Zap
 } from "lucide-react";
 
 
@@ -36,6 +38,10 @@ interface DatabasePanelProps {
     timestamp: Date;
     status: 'success' | 'error';
     isPaginated?: boolean;
+    executionMode?: 'query' | 'update';
+    cyclesCost?: bigint;
+    usdCost?: number;
+    errorMessage?: string;
   } | null;
 }
 
@@ -148,15 +154,38 @@ export function DatabasePanel({ activeTable, queryResult }: DatabasePanelProps) 
                 )}
               </div>
               <div>
-                <h2 className="text-xl font-semibold text-foreground">Query Results</h2>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <h2 className="text-xl font-semibold text-foreground">Query Results</h2>
+                  {queryResult.executionMode && (
+                    <Badge variant="outline" className="text-xs">
+                      {queryResult.executionMode === 'update' ? (
+                        <><Zap className="h-3 w-3 mr-1" />Update Call</>
+                      ) : (
+                        <><Eye className="h-3 w-3 mr-1" />Query Call</>
+                      )}
+                    </Badge>
+                  )}
+                </div>
                 <div className="flex items-center gap-4 mt-1">
                   <span className="text-sm text-muted-foreground">
-                    Executed in {queryResult.duration}ms
+                    Executed at {queryResult.timestamp.toLocaleTimeString()}
                   </span>
                   <span className="text-sm text-muted-foreground">•</span>
                   <span className="text-sm text-muted-foreground">
-                    {queryResult.timestamp.toLocaleTimeString()}
+                    {queryResult.duration}ms
                   </span>
+                  {queryResult.cyclesCost !== undefined && queryResult.usdCost !== undefined && (
+                    <>
+                      <span className="text-sm text-muted-foreground">•</span>
+                      <span className="text-sm text-muted-foreground">
+                        {queryResult.cyclesCost.toLocaleString()} cycles
+                      </span>
+                      <span className="text-sm text-muted-foreground">•</span>
+                      <span className="text-sm text-muted-foreground">
+                        ${queryResult.usdCost.toFixed(6)}
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -170,13 +199,22 @@ export function DatabasePanel({ activeTable, queryResult }: DatabasePanelProps) 
         <div className="flex-1 flex flex-col overflow-hidden">
           <div className="flex-1 overflow-auto p-6">
             {queryResult.status === 'error' ? (
-              <div className="text-center space-y-4">
-                <div className="p-4 bg-destructive/10 rounded-full w-16 h-16 flex items-center justify-center mx-auto">
-                  <AlertCircle className="h-8 w-8 text-destructive" />
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-medium text-foreground">Error Details</h3>
+                  <code className="text-xs bg-muted px-2 py-1 rounded">{queryResult.query}</code>
                 </div>
-                <div>
-                  <h3 className="text-lg font-medium text-foreground">Query Failed</h3>
-                  <p className="text-muted-foreground">There was an error executing your query</p>
+                
+                <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="h-5 w-5 text-destructive mt-0.5 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-medium text-destructive mb-2">Query Failed</h4>
+                      <pre className="text-sm text-foreground whitespace-pre-wrap break-words font-mono bg-background/50 p-3 rounded border">
+                        {queryResult.errorMessage || 'There was an error executing your query'}
+                      </pre>
+                    </div>
+                  </div>
                 </div>
               </div>
             ) : queryResult.data && queryResult.data.data && Array.isArray(queryResult.data.data) && queryResult.data.data.length > 0 ? (

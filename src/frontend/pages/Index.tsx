@@ -19,6 +19,11 @@ const Index = () => {
     duration: number;
     timestamp: Date;
     status: 'success' | 'error';
+    isPaginated?: boolean;
+    executionMode?: 'query' | 'update';
+    cyclesCost?: bigint;
+    usdCost?: number;
+    errorMessage?: string;
   } | null>(null);
 
   const handleTableSelect = (table: Table) => {

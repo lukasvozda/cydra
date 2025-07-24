@@ -49,6 +49,10 @@ export interface _SERVICE {
   'instruction_counter' : ActorMethod<[], bigint>,
   'query' : ActorMethod<[string], QueryResult>,
   'query_paginated' : ActorMethod<[string, number, number], PaginatedResult>,
+  'query_paginated_update' : ActorMethod<
+    [string, number, number],
+    PaginatedResult
+  >,
 }
 export declare const idlFactory: IDL.InterfaceFactory;
 export declare const init: (args: { IDL: typeof IDL }) => IDL.Type[];

@@ -35,7 +35,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const initAuth = async () => {
     try {
-      const client = await AuthClient.create();
+      const client = await AuthClient.create({
+        idleOptions: {
+          idleTimeout: 24 * 60 * 60 * 1000, // 24 hours in milliseconds
+          disableDefaultIdleCallback: true, // Prevent automatic logout on idle
+        }
+      });
       setAuthClient(client);
 
       const isAuth = await client.isAuthenticated();
@@ -70,7 +75,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         identityProvider: isLocal
           ? `http://127.0.0.1:8000/?canisterId=${import.meta.env.VITE_INTERNET_IDENTITY_CANISTER_ID || 'rdmx6-jaaaa-aaaaa-aaadq-cai'}`
           : 'https://identity.ic0.app',
-        maxTimeToLive: BigInt(7 * 24 * 60 * 60 * 1000 * 1000 * 1000), // 7 days
+        maxTimeToLive: BigInt(24 * 60 * 60 * 1000 * 1000 * 1000), // 24 hours
         windowOpenerFeatures: 'toolbar=0,location=0,menubar=0,width=525,height=525,left=100,top=100',
         onSuccess: () => {
           const identity = authClient.getIdentity();

@@ -68,5 +68,6 @@ service : {
     "execute": (text) -> (Result);
     "query": (text) -> (QueryResult) query;
     "query_paginated": (text, nat32, nat32) -> (PaginatedResult) query;
+    "query_paginated_update": (text, nat32, nat32) -> (PaginatedResult);
     "get_database_info": () -> (DatabaseInfoResult) query;
 }

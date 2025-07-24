@@ -57,6 +57,11 @@ export const idlFactory = ({ IDL }) => {
         [PaginatedResult],
         ['query'],
       ),
+    'query_paginated_update' : IDL.Func(
+        [IDL.Text, IDL.Nat32, IDL.Nat32],
+        [PaginatedResult],
+        [],
+      ),
   });
 };
 export const init = ({ IDL }) => { return []; };

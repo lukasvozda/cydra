@@ -76,10 +76,8 @@ fn query(sql: String) -> QueryResult {
     })
 }
 
-#[query]
-fn query_paginated(sql: String, page: u32, page_size: u32) -> PaginatedResult {
-    let conn = ic_sqlite::CONN.lock().unwrap();
-    
+// Shared pagination function for both query and update calls
+fn execute_paginated_query(conn: &rusqlite::Connection, sql: String, page: u32, page_size: u32) -> PaginatedResult {
     // Validate page_size to prevent abuse
     let validated_page_size = if page_size == 0 { 100 } else { page_size.min(1000) };
     let offset = page * validated_page_size;
@@ -160,6 +158,18 @@ fn query_paginated(sql: String, page: u32, page_size: u32) -> PaginatedResult {
         page_size: validated_page_size,
         has_more,
     })
+}
+
+#[query]
+fn query_paginated(sql: String, page: u32, page_size: u32) -> PaginatedResult {
+    let conn = ic_sqlite::CONN.lock().unwrap();
+    execute_paginated_query(&conn, sql, page, page_size)
+}
+
+#[update]
+fn query_paginated_update(sql: String, page: u32, page_size: u32) -> PaginatedResult {
+    let conn = ic_sqlite::CONN.lock().unwrap();
+    execute_paginated_query(&conn, sql, page, page_size)
 }
 
 #[derive(CandidType, Deserialize)]
