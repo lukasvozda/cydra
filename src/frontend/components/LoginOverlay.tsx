@@ -29,6 +29,9 @@ export function LoginOverlay() {
               <p className="text-muted-foreground">
                 ICP cloud SQL platform
               </p>
+              <p className="text-sm text-muted-foreground">
+              The application allows users to create databases, manage tables, upload data (soon) and query data through a modern web interface.
+              </p>
             </div>
           </div>
 
