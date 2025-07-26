@@ -1,6 +1,6 @@
 # Cydra
 
-Cydra is an ICP (Internet Computer Protocol) SQLite database management platform built with Rust backend and React frontend. It demonstrates the use of ICSQLite - a cloud SQLite database implementation for the Internet Computer that provides SDK for developers to persist data in IC canisters. The application allows users to create databases, manage tables, upload data and query data through a modern web interface.
+Cydra is an ICP (Internet Computer Protocol) SQLite database management platform built with Rust backend and React frontend. It demonstrates the use of ICSQLite - a cloud SQLite database implementation for the Internet Computer that persist data in IC canisters. The application allows users to create databases, manage tables, upload data and query data through a modern web interface.
 
 The project consists of a Rust canister backend providing SQLite functionality and a React frontend application that provides a complete database management UI with real-time query execution, table browsing, and results visualization.
 
